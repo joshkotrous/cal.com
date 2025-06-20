@@ -154,7 +154,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid")
+  @Get(":bookingUid")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Get a booking",
@@ -175,7 +175,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/recordings")
+  @Get(":bookingUid/recordings")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Get all the recordings for the booking",
@@ -190,7 +190,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/transcripts")
+  @Get(":bookingUid/transcripts")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Get all the transcripts download links for the booking",
@@ -229,7 +229,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reschedule")
+  @Post(":bookingUid/reschedule")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Reschedule a booking",
@@ -261,19 +261,24 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/cancel")
-  @UseGuards(BookingUidGuard)
+  // ---------------------------------------------------------------------------
+  //  SECURITY FIX: Added authentication & authorization to cancellation endpoint
+  // ---------------------------------------------------------------------------
+  @Post(":bookingUid/cancel")
   @HttpCode(HttpStatus.OK)
+  @Permissions([BOOKING_WRITE])
+  @UseGuards(ApiAuthGuard, BookingUidGuard)
+  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Cancel a booking",
     description: `:bookingUid can be :bookingUid of an usual booking, individual recurrence or recurring booking to cancel all recurrences.
     
-    \nCancelling seated bookings:
+    Cancelling seated bookings:
     It is possible to cancel specific seat within a booking as an attendee or all of the seats as the host.
-    \n1. As an attendee - provide :bookingUid in the request URL \`/bookings/:bookingUid/cancel\` and seatUid in the request body \`{"seatUid": "123-123-123"}\` . This will remove this particular attendance from the booking.
-    \n2. As the host - host can cancel booking for all attendees aka for every seat. Provide :bookingUid in the request URL \`/bookings/:bookingUid/cancel\` and cancellationReason in the request body \`{"cancellationReason": "Will travel"}\` and \`Authorization: Bearer token\` request header where token is event type owner (host) credential. This will cancel the booking for all attendees.
+    1. As an attendee - provide :bookingUid in the request URL \`/bookings/:bookingUid/cancel\` and seatUid in the request body \`{"seatUid": "123-123-123"}\` . This will remove this particular attendance from the booking.
+    2. As the host - host can cancel booking for all attendees aka for every seat. Provide :bookingUid in the request URL \`/bookings/:bookingUid/cancel\` and cancellationReason in the request body \`{"cancellationReason": "Will travel"}\` and \`Authorization: Bearer token\` request header where token is event type owner (host) credential. This will cancel the booking for all attendees.
     
-    \nCancelling recurring seated bookings:
+    Cancelling recurring seated bookings:
     For recurring seated bookings it is not possible to cancel all of them with 1 call
     like with non-seated recurring bookings by providing recurring bookind uid - you have to cancel each recurrence booking by its bookingUid + seatUid.`,
   })
@@ -302,7 +307,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/mark-absent")
+  @Post(":bookingUid/mark-absent")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -324,7 +329,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reassign")
+  @Post(":bookingUid/reassign")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -346,7 +351,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reassign/:userId")
+  @Post(":bookingUid/reassign/:userId")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -375,7 +380,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/confirm")
+  @Post(":bookingUid/confirm")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -396,7 +401,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/decline")
+  @Post(":bookingUid/decline")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -418,7 +423,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/calendar-links")
+  @Get(":bookingUid/calendar-links")
   @UseGuards(ApiAuthGuard, BookingUidGuard)
   @Permissions([BOOKING_READ])
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
@@ -437,7 +442,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/references")
+  @Get(":bookingUid/references")
   @PlatformPlan("SCALE")
   @UseGuards(ApiAuthGuard, BookingUidGuard)
   @Permissions([BOOKING_READ])
