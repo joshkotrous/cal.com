@@ -233,20 +233,23 @@ export default defineConfig({
           ]),
         };
       },
-      users: ({ row }) =>
-        row.role !== "ADMIN"
-          ? {
-              bio: c.sentence(row.bio),
-              email: c.email(row.email),
-              name: c.fullName(row.name),
-              password: c.password(row.password),
-              timeZone: c.timezone(row.timeZone),
-              username: generateUsername(row.username),
-              metadata: {
-                [c.word(row.metadata)]: c.words(row.metadata),
-              },
-            }
-          : row,
+      // Securely anonymise all user rows, including ADMIN.
+      users: ({ row }) => {
+        const anonymised = {
+          bio: c.sentence(row.bio),
+          email: c.email(row.email),
+          name: c.fullName(row.name),
+          password: c.password(row.password),
+          timeZone: c.timezone(row.timeZone),
+          username: generateUsername(row.username),
+          metadata: {
+            [c.word(row.metadata)]: c.words(row.metadata),
+          },
+        };
+
+        // Preserve role only when required (e.g., for ADMIN) to keep referential integrity
+        return row.role === "ADMIN" ? { ...anonymised, role: row.role } : anonymised;
+      },
     },
   },
   subset: {
