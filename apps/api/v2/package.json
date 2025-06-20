@@ -74,7 +74,6 @@
     "lodash": "^4.17.21",
     "luxon": "^3.4.4",
     "nest-winston": "^1.9.4",
-    "next-auth": "^4.22.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "qs-stringify": "^1.2.1",
@@ -85,7 +84,8 @@
     "uuid": "^8.3.2",
     "winston": "^3.13.0",
     "winston-transport": "^4.7.0",
-    "zod": "^3.22.4"
+    "zod": "^3.22.4",
+    "next-auth": "^4.24.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
