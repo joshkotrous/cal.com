@@ -12,7 +12,7 @@ function hasStringProp<T extends string>(x: unknown, key: T): x is { [key in T]:
 
 function replaceKeyIfExists<T extends string>(x: object, key: T) {
   if (hasStringProp(x, key)) {
-    return { ...x, [key]: c.uuid(x[key]) };
+    return { ...x, [key]: c.uuid((x as Record<T, string>)[key]) };
   }
   return x;
 }
@@ -233,20 +233,19 @@ export default defineConfig({
           ]),
         };
       },
-      users: ({ row }) =>
-        row.role !== "ADMIN"
-          ? {
-              bio: c.sentence(row.bio),
-              email: c.email(row.email),
-              name: c.fullName(row.name),
-              password: c.password(row.password),
-              timeZone: c.timezone(row.timeZone),
-              username: generateUsername(row.username),
-              metadata: {
-                [c.word(row.metadata)]: c.words(row.metadata),
-              },
-            }
-          : row,
+      // Always anonymise user records, including administrators, while preserving the role field for downstream logic.
+      users: ({ row }) => ({
+        role: row.role,
+        bio: c.sentence(row.bio),
+        email: c.email(row.email),
+        name: c.fullName(row.name),
+        password: c.password(row.password),
+        timeZone: c.timezone(row.timeZone),
+        username: generateUsername(row.username),
+        metadata: {
+          [c.word(row.metadata)]: c.words(row.metadata),
+        },
+      }),
     },
   },
   subset: {
