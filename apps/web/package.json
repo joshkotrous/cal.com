@@ -190,11 +190,11 @@
     "msw": "^0.42.3",
     "node-html-parser": "^6.1.10",
     "node-mocks-http": "^1.11.0",
-    "postcss": "^8.4.18",
     "tailwindcss": "^3.3.3",
     "tailwindcss-animate": "^1.0.6",
     "ts-node": "^10.9.1",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "postcss": "^8.4.31"
   },
   "nextBundleAnalysis": {
     "budget": 358400,
