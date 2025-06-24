@@ -32,6 +32,8 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  NotFoundException,
+  ForbiddenException,
 } from "@nestjs/common";
 import {
   ApiOperation,
@@ -106,17 +108,17 @@ export class BookingsController_2024_08_13 {
 
       Meaning that the request bodies are equal but the outcome depends on what kind of event type it is with the goal of making it as seamless for developers as possible.
 
-      For team event types it is possible to create instant meeting. To do that just pass \`"instant": true\` to the request body.
+      For team event types it is possible to create instant meeting. To do that just pass `"instant": true` to the request body.
 
       The start needs to be in UTC aka if the timezone is GMT+2 in Rome and meeting should start at 11, then UTC time should have hours 09:00 aka without time zone.
 
       Finally, there are 2 ways to book an event type belonging to an individual user:
-      1. Provide \`eventTypeId\` in the request body.
-      2. Provide \`eventTypeSlug\` and \`username\` and optionally \`organizationSlug\` if the user with the username is within an organization.
+      1. Provide `eventTypeId` in the request body.
+      2. Provide `eventTypeSlug` and `username` and optionally `organizationSlug` if the user with the username is within an organization.
 
       And 2 ways to book and event type belonging to a team:
-      1. Provide \`eventTypeId\` in the request body.
-      2. Provide \`eventTypeSlug\` and \`teamSlug\` and optionally \`organizationSlug\` if the team with the teamSlug is within an organization.
+      1. Provide `eventTypeId` in the request body.
+      2. Provide `eventTypeSlug` and `teamSlug` and optionally `organizationSlug` if the team with the teamSlug is within an organization.
       `,
   })
   @ApiBody({
@@ -154,11 +156,11 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid")
+  @Get(":bookingUid")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Get a booking",
-    description: `\`:bookingUid\` can be
+    description: `":bookingUid" can be
 
       1. uid of a normal booking
 
@@ -175,13 +177,27 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/recordings")
-  @UseGuards(BookingUidGuard)
+  @Get(":bookingUid/recordings")
+  @UseGuards(ApiAuthGuard, BookingUidGuard)
+  @Permissions([BOOKING_READ])
+  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
   @ApiOperation({
     summary: "Get all the recordings for the booking",
-    description: `Fetches all the recordings for the booking \`:bookingUid\``,
+    description: `Fetches all the recordings for the booking ":bookingUid"`,
   })
-  async getBookingRecordings(@Param("bookingUid") bookingUid: string): Promise<GetBookingRecordingsOutput> {
+  async getBookingRecordings(@Param("bookingUid") bookingUid: string, @GetUser() user: UserWithProfile): Promise<GetBookingRecordingsOutput> {
+    // Ensure the user is authorized to access this booking's recordings
+    const booking = await this.bookingsService.getBooking(bookingUid);
+    if (!booking) {
+      throw new NotFoundException("Booking not found");
+    }
+    // Only allow access if the user is the owner or an attendee of the booking
+    if (
+      booking.ownerId !== user.id &&
+      (!booking.attendees || !booking.attendees.some((att: any) => att.userId === user.id))
+    ) {
+      throw new ForbiddenException("You do not have access to these recordings");
+    }
     const recordings = await this.calVideoService.getRecordings(bookingUid);
 
     return {
@@ -190,11 +206,11 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/transcripts")
+  @Get(":bookingUid/transcripts")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Get all the transcripts download links for the booking",
-    description: `Fetches all the transcripts download links for the booking \`:bookingUid\``,
+    description: `Fetches all the transcripts download links for the booking ":bookingUid"`,
   })
   async getBookingTranscripts(@Param("bookingUid") bookingUid: string): Promise<GetBookingTranscriptsOutput> {
     const transcripts = await this.calVideoService.getTranscripts(bookingUid);
@@ -229,7 +245,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reschedule")
+  @Post(":bookingUid/reschedule")
   @UseGuards(BookingUidGuard)
   @ApiOperation({
     summary: "Reschedule a booking",
@@ -261,7 +277,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/cancel")
+  @Post(":bookingUid/cancel")
   @UseGuards(BookingUidGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -270,8 +286,8 @@ export class BookingsController_2024_08_13 {
     
     \nCancelling seated bookings:
     It is possible to cancel specific seat within a booking as an attendee or all of the seats as the host.
-    \n1. As an attendee - provide :bookingUid in the request URL \`/bookings/:bookingUid/cancel\` and seatUid in the request body \`{"seatUid": "123-123-123"}\` . This will remove this particular attendance from the booking.
-    \n2. As the host - host can cancel booking for all attendees aka for every seat. Provide :bookingUid in the request URL \`/bookings/:bookingUid/cancel\` and cancellationReason in the request body \`{"cancellationReason": "Will travel"}\` and \`Authorization: Bearer token\` request header where token is event type owner (host) credential. This will cancel the booking for all attendees.
+    \n1. As an attendee - provide :bookingUid in the request URL `/bookings/:bookingUid/cancel` and seatUid in the request body `{\"seatUid\": \"123-123-123\"}` . This will remove this particular attendance from the booking.
+    \n2. As the host - host can cancel booking for all attendees aka for every seat. Provide :bookingUid in the request URL `/bookings/:bookingUid/cancel` and cancellationReason in the request body `{\"cancellationReason\": \"Will travel\"}` and `Authorization: Bearer token` request header where token is event type owner (host) credential. This will cancel the booking for all attendees.
     
     \nCancelling recurring seated bookings:
     For recurring seated bookings it is not possible to cancel all of them with 1 call
@@ -302,7 +318,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/mark-absent")
+  @Post(":bookingUid/mark-absent")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -324,7 +340,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reassign")
+  @Post(":bookingUid/reassign")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -346,7 +362,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reassign/:userId")
+  @Post(":bookingUid/reassign/:userId")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -375,7 +391,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/confirm")
+  @Post(":bookingUid/confirm")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -396,7 +412,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/decline")
+  @Post(":bookingUid/decline")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -418,7 +434,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/calendar-links")
+  @Get(":bookingUid/calendar-links")
   @UseGuards(ApiAuthGuard, BookingUidGuard)
   @Permissions([BOOKING_READ])
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
@@ -437,7 +453,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/references")
+  @Get(":bookingUid/references")
   @PlatformPlan("SCALE")
   @UseGuards(ApiAuthGuard, BookingUidGuard)
   @Permissions([BOOKING_READ])
