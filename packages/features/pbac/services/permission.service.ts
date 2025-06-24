@@ -8,9 +8,21 @@ import type {
 import { PERMISSION_REGISTRY } from "../types/permission-registry";
 
 export class PermissionService {
+  /**
+   * Validates a permission string by ensuring it references only own properties of PERMISSION_REGISTRY
+   * and its nested action object, preventing prototype pollution and authorization bypass.
+   */
   validatePermission(permission: PermissionString): boolean {
     const [resource, action] = permission.split(".") as [Resource, CrudAction | CustomAction];
-    return !!PERMISSION_REGISTRY[resource]?.[action];
+    // Ensure resource and action are own properties, not inherited from prototype
+    if (!Object.prototype.hasOwnProperty.call(PERMISSION_REGISTRY, resource)) {
+      return false;
+    }
+    const actions = PERMISSION_REGISTRY[resource];
+    if (!actions || !Object.prototype.hasOwnProperty.call(actions, action)) {
+      return false;
+    }
+    return !!actions[action];
   }
 
   validatePermissions(permissions: PermissionString[]): boolean {
