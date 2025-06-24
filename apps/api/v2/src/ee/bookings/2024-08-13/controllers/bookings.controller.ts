@@ -229,8 +229,10 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reschedule")
-  @UseGuards(BookingUidGuard)
+  @Post(":bookingUid/reschedule")
+  @UseGuards(ApiAuthGuard, BookingUidGuard)
+  @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
+  @Permissions([BOOKING_WRITE])
   @ApiOperation({
     summary: "Reschedule a booking",
     description: "Reschedule a booking or seated booking",
@@ -261,7 +263,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/cancel")
+  @Post(":bookingUid/cancel")
   @UseGuards(BookingUidGuard)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -302,7 +304,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/mark-absent")
+  @Post(":bookingUid/mark-absent")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -324,7 +326,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reassign")
+  @Post(":bookingUid/reassign")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -346,7 +348,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/reassign/:userId")
+  @Post(":bookingUid/reassign/:userId")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -375,7 +377,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/confirm")
+  @Post(":bookingUid/confirm")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -396,7 +398,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Post("/:bookingUid/decline")
+  @Post(":bookingUid/decline")
   @HttpCode(HttpStatus.OK)
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard, BookingUidGuard)
@@ -418,7 +420,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/calendar-links")
+  @Get(":bookingUid/calendar-links")
   @UseGuards(ApiAuthGuard, BookingUidGuard)
   @Permissions([BOOKING_READ])
   @ApiHeader(API_KEY_OR_ACCESS_TOKEN_HEADER)
@@ -437,7 +439,7 @@ export class BookingsController_2024_08_13 {
     };
   }
 
-  @Get("/:bookingUid/references")
+  @Get(":bookingUid/references")
   @PlatformPlan("SCALE")
   @UseGuards(ApiAuthGuard, BookingUidGuard)
   @Permissions([BOOKING_READ])
