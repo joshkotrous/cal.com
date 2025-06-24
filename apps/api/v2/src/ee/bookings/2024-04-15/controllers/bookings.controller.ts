@@ -147,7 +147,7 @@ export class BookingsController_2024_04_15 {
     };
   }
 
-  @Get("/:bookingUid")
+  @Get(":/bookingUid")
   async getBooking(@Param("bookingUid") bookingUid: string): Promise<GetBookingOutput_2024_04_15> {
     const { bookingInfo } = await getBookingInfo(bookingUid);
 
@@ -161,7 +161,7 @@ export class BookingsController_2024_04_15 {
     };
   }
 
-  @Get("/:bookingUid/reschedule")
+  @Get(":/bookingUid/reschedule")
   async getBookingForReschedule(@Param("bookingUid") bookingUid: string): Promise<ApiResponse<unknown>> {
     const booking = await getBookingForReschedule(bookingUid);
 
@@ -216,7 +216,9 @@ export class BookingsController_2024_04_15 {
     throw new InternalServerErrorException("Could not create booking.");
   }
 
-  @Post("/:bookingUid/cancel")
+  @Post(":/bookingUid/cancel")
+  @UseGuards(ApiAuthGuard)
+  @Permissions([BOOKING_WRITE])
   async cancelBooking(
     @Req() req: BookingRequest,
     @Param("bookingUid") bookingUid: string,
@@ -264,7 +266,7 @@ export class BookingsController_2024_04_15 {
     throw new InternalServerErrorException("Could not cancel booking.");
   }
 
-  @Post("/:bookingUid/mark-no-show")
+  @Post(":/bookingUid/mark-no-show")
   @Permissions([BOOKING_WRITE])
   @UseGuards(ApiAuthGuard)
   async markNoShow(
