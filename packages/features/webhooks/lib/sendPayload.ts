@@ -1,6 +1,6 @@
 import type { Payment, Webhook } from "@prisma/client";
 import { createHmac } from "crypto";
-import { compile } from "handlebars";
+import Handlebars from "handlebars";
 
 import type { TGetTranscriptAccessLink } from "@calcom/app-store/dailyvideo/zod";
 import { getHumanReadableLocationValue } from "@calcom/app-store/locations";
@@ -163,7 +163,11 @@ function getZapierPayload(data: WithUTCOffsetType<EventPayloadType & { createdAt
 }
 
 function applyTemplate(template: string, data: WebhookDataType, contentType: ContentType) {
-  const compiled = compile(template)(data).replace(/&quot;/g, '"');
+  // Secure Handlebars: block prototype access
+  const compiled = Handlebars.compile(template, {
+    allowProtoPropertiesByDefault: false,
+    allowProtoMethodsByDefault: false
+  })(data).replace(/&quot;/g, '"');
 
   if (contentType === "application/json") {
     return JSON.stringify(jsonParse(compiled));
