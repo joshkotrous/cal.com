@@ -34,6 +34,7 @@ const handleSeats = async (newSeatedBookingObject: NewSeatedBookingObject) => {
     rescheduledBy,
     rescheduleReason,
     isDryRun = false,
+    reqUserId,
   } = newSeatedBookingObject;
   // TODO: We could allow doing more things to support good dry run for seats
   if (isDryRun) return;
@@ -47,7 +48,6 @@ const handleSeats = async (newSeatedBookingObject: NewSeatedBookingObject) => {
         {
           uid: rescheduleUid || reqBookingUid,
         },
-
         {
           eventTypeId: eventType.id,
           startTime: new Date(evt.startTime),
@@ -76,6 +76,11 @@ const handleSeats = async (newSeatedBookingObject: NewSeatedBookingObject) => {
   // We might be trying to create a new booking
   if (!seatedBooking) {
     return;
+  }
+
+  // Authorization check: Ensure the user is the owner of the booking
+  if (!reqUserId || seatedBooking.userId !== reqUserId) {
+    throw new HttpError({ statusCode: 403, message: ErrorCode.Unauthorized });
   }
 
   // See if attendee is already signed up for timeslot
