@@ -198,6 +198,15 @@ export const getBookingForReschedule = async (uid: string, userId?: number) => {
     hasOwnershipOnBooking = true;
   }
 
+  // Additional authorization for non-seated events
+  if (theBooking && (!theBooking?.eventType?.seatsPerTimeSlot) && bookingSeatReferenceUid === null) {
+    // Only allow access if the user is the owner or a host of the event
+    const isOwnerOfBooking = theBooking.userId === userId;
+    const isHostOfEventType = theBooking?.eventType?.hosts.some((host) => host.userId === userId);
+    if (!isOwnerOfBooking && !isHostOfEventType) return null;
+    hasOwnershipOnBooking = true;
+  }
+
   // If we don't have a booking and no rescheduleUid, the ID is invalid,
   // and we return null here.
   if (!theBooking && !rescheduleUid) return null;
