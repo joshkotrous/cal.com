@@ -40,6 +40,29 @@ export const handleCreatePhoneCall = async ({
     generalPrompt: userCustomPrompt,
   } = input;
 
+  // --- ADDED TENANT VALIDATION ---
+  // Fetch the event type and ensure it belongs to the user's organization
+  const eventType = await prisma.eventType.findUnique({
+    where: { id: eventTypeId },
+    select: {
+      id: true,
+      profile: { select: { organizationId: true } },
+      team: { select: { parent: { select: { organizationSettings: { select: { organizationId: true } } } } } },
+    },
+  });
+
+  if (!eventType) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Event type not found" });
+  }
+
+  // Check if the eventType belongs to the user's organization
+  const userOrgId = user.profile.organization?.id;
+  const eventOrgId = eventType.profile?.organizationId || eventType.team?.parent?.organizationSettings?.organizationId;
+  if (!userOrgId || !eventOrgId || userOrgId !== eventOrgId) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this event type" });
+  }
+  // --- END TENANT VALIDATION ---
+
   const generalPrompt =
     templateType === templateTypeEnum.enum.CUSTOM_TEMPLATE
       ? userCustomPrompt
