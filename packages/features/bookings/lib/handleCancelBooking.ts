@@ -93,6 +93,16 @@ async function handler(input: CancelBookingInput) {
     throw new HttpError({ statusCode: 400, message: "User not found" });
   }
 
+  // --- AUTHORIZATION CHECK ---
+  // Only allow the booking owner, an event host, or the event type owner to cancel the booking
+  const isBookingOwner = bookingToDelete.userId === userId;
+  const isEventTypeOwner = bookingToDelete.eventType?.owner?.id === userId;
+  const isEventHost = bookingToDelete.eventType?.hosts?.some((host) => host.user.id === userId);
+  if (!isBookingOwner && !isEventTypeOwner && !isEventHost) {
+    throw new HttpError({ statusCode: 403, message: "You are not authorized to cancel this booking." });
+  }
+  // --- END AUTHORIZATION CHECK ---
+
   if (bookingToDelete.eventType?.disableCancelling) {
     throw new HttpError({
       statusCode: 400,
