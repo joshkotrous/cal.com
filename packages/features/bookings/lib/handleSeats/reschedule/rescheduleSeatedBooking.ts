@@ -129,6 +129,17 @@ const rescheduleSeatedBooking = async (
   // seatAttendee is null when the organizer is rescheduling.
   const seatAttendee: SeatAttendee | null = bookingSeat?.attendee || null;
   if (seatAttendee) {
+    // Authorization check: Only allow the attendee themselves (by userId or email) to reschedule their seat
+    // Check if reqUserId matches the attendee's user id, or if bookerEmail matches the attendee's email
+    // bookingSeat.attendee may not have userId, so check both userId and email
+    const attendeeUserId = bookingSeat?.attendee?.userId;
+    const attendeeEmail = bookingSeat?.attendee?.email;
+    if (
+      (attendeeUserId && attendeeUserId !== reqUserId) ||
+      (attendeeEmail && attendeeEmail !== bookerEmail)
+    ) {
+      throw new HttpError({ statusCode: 401, message: "Unauthorized to reschedule this seat." });
+    }
     resultBooking = await attendeeRescheduleSeatedBooking(
       rescheduleSeatedBookingObject,
       seatAttendee,
