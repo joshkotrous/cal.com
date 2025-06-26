@@ -107,6 +107,28 @@ const storeInLocalStorage = ({
   localStorage.setItem(STORAGE_KEY, value);
 };
 
+// Helper to validate redirect URLs
+function isSafeRedirectUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString, window.location.origin);
+    // Only allow http(s) protocols
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return false;
+    }
+    // Allow localhost for development
+    if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+      return true;
+    }
+    // Only allow same TLD+1 as current site
+    const getTldPlus1 = (hostname: string) => hostname.split(".").slice(-2).join(".");
+    const currentTldPlus1 = getTldPlus1(window.location.hostname);
+    const urlTldPlus1 = getTldPlus1(url.hostname);
+    return currentTldPlus1 === urlTldPlus1;
+  } catch {
+    return false;
+  }
+}
+
 export const useBookings = ({ event, hashedLink, bookingForm, metadata, teamMemberEmail }: IUseBookings) => {
   const router = useRouter();
   const eventSlug = useBookerStore((state) => state.eventSlug);
@@ -266,7 +288,10 @@ export const useBookings = ({ event, hashedLink, bookingForm, metadata, teamMemb
 
       const query = {
         isSuccessBookingPage: true,
-        email: bookingForm.getValues("responses.email"),
+        // Do NOT forward email or other PII to external redirects
+        ...(event?.data?.successRedirectUrl && isSafeRedirectUrl(event.data.successRedirectUrl)
+          ? {}
+          : { email: bookingForm.getValues("responses.email") }),
         eventTypeSlug: eventSlug,
         seatReferenceUid: "seatReferenceUid" in booking ? (booking.seatReferenceUid as string) : null,
         formerTime:
@@ -274,14 +299,20 @@ export const useBookings = ({ event, hashedLink, bookingForm, metadata, teamMemb
         rescheduledBy, // ensure further reschedules performed on the success page are recorded correctly
       };
 
+      // Only allow redirect if URL is safe, and only forward params if allowed
+      const safeRedirectUrl = event?.data?.successRedirectUrl && isSafeRedirectUrl(event.data.successRedirectUrl)
+        ? event.data.successRedirectUrl
+        : "";
+      const forwardParams =
+        event?.data?.forwardParamsSuccessRedirect === undefined
+          ? true
+          : event?.data?.forwardParamsSuccessRedirect;
+
       bookingSuccessRedirect({
-        successRedirectUrl: event?.data?.successRedirectUrl || "",
+        successRedirectUrl: safeRedirectUrl,
         query,
         booking: booking,
-        forwardParamsSuccessRedirect:
-          event?.data?.forwardParamsSuccessRedirect === undefined
-            ? true
-            : event?.data?.forwardParamsSuccessRedirect,
+        forwardParamsSuccessRedirect: forwardParams && !!safeRedirectUrl,
       });
     },
     onError: (err, _, ctx) => {
@@ -348,7 +379,10 @@ export const useBookings = ({ event, hashedLink, bookingForm, metadata, teamMemb
       const query = {
         isSuccessBookingPage: true,
         allRemainingBookings: true,
-        email: bookingForm.getValues("responses.email"),
+        // Do NOT forward email or other PII to external redirects
+        ...(event?.data?.successRedirectUrl && isSafeRedirectUrl(event.data.successRedirectUrl)
+          ? {}
+          : { email: bookingForm.getValues("responses.email") }),
         eventTypeSlug: eventSlug,
         formerTime:
           isRescheduling && bookingData?.startTime ? dayjs(bookingData.startTime).toString() : undefined,
@@ -379,14 +413,20 @@ export const useBookings = ({ event, hashedLink, bookingForm, metadata, teamMemb
         });
       }
 
+      // Only allow redirect if URL is safe, and only forward params if allowed
+      const safeRedirectUrl = event?.data?.successRedirectUrl && isSafeRedirectUrl(event.data.successRedirectUrl)
+        ? event.data.successRedirectUrl
+        : "";
+      const forwardParams =
+        event?.data?.forwardParamsSuccessRedirect === undefined
+          ? true
+          : event?.data?.forwardParamsSuccessRedirect;
+
       bookingSuccessRedirect({
-        successRedirectUrl: event?.data?.successRedirectUrl || "",
+        successRedirectUrl: safeRedirectUrl,
         query,
         booking,
-        forwardParamsSuccessRedirect:
-          event?.data?.forwardParamsSuccessRedirect === undefined
-            ? true
-            : event?.data?.forwardParamsSuccessRedirect,
+        forwardParamsSuccessRedirect: forwardParams && !!safeRedirectUrl,
       });
     },
   });
