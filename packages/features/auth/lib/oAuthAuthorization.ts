@@ -5,8 +5,13 @@ import type { OAuthTokenPayload } from "@calcom/types/oauth";
 
 export default async function isAuthorized(token: string, requiredScopes: string[] = []) {
   let decodedToken: OAuthTokenPayload;
+  const secret = process.env.CALENDSO_ENCRYPTION_KEY;
+  if (!secret) {
+    // Fail securely if the secret is not set
+    throw new Error("CALENDSO_ENCRYPTION_KEY environment variable must be set for authentication.");
+  }
   try {
-    decodedToken = jwt.verify(token, process.env.CALENDSO_ENCRYPTION_KEY || "") as OAuthTokenPayload;
+    decodedToken = jwt.verify(token, secret) as OAuthTokenPayload;
   } catch {
     return null;
   }
