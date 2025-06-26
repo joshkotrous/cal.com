@@ -14,7 +14,27 @@ const log = logger.getSubLogger({ prefix: ["CalendarCacheCron"] });
 
 const validateRequest = (req: NextApiRequest) => {
   const apiKey = req.headers.authorization || req.query.apiKey;
-  if (![process.env.CRON_API_KEY, `Bearer ${process.env.CRON_SECRET}`].includes(`${apiKey}`)) {
+  const cronApiKey = process.env.CRON_API_KEY;
+  const cronSecret = process.env.CRON_SECRET;
+
+  // Explicitly check for missing env vars and fail securely
+  if (!cronApiKey && !cronSecret) {
+    throw new HttpError({ statusCode: 500, message: "Server misconfiguration: CRON_API_KEY and CRON_SECRET are not set" });
+  }
+  if (!cronApiKey && cronSecret) {
+    if (`Bearer ${cronSecret}` !== `${apiKey}`) {
+      throw new HttpError({ statusCode: 401, message: "Unauthorized" });
+    }
+    return;
+  }
+  if (cronApiKey && !cronSecret) {
+    if (cronApiKey !== `${apiKey}`) {
+      throw new HttpError({ statusCode: 401, message: "Unauthorized" });
+    }
+    return;
+  }
+  // Both are set
+  if (![cronApiKey, `Bearer ${cronSecret}`].includes(`${apiKey}`)) {
     throw new HttpError({ statusCode: 401, message: "Unauthorized" });
   }
 };
