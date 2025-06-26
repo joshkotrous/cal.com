@@ -31,6 +31,25 @@ export type BookingOptions = {
   routingFormSearchParams?: RoutingFormSearchParams;
 };
 
+// Helper to safely parse JSON and prevent prototype pollution
+function safeParseJson(input: string): unknown | undefined {
+  if (typeof input !== "string" || input.length > 10000) return undefined; // Limit size
+  try {
+    const obj = JSON.parse(input);
+    // Prevent prototype pollution
+    if (obj && typeof obj === "object") {
+      if (Object.prototype.hasOwnProperty.call(obj, "__proto__") ||
+          Object.prototype.hasOwnProperty.call(obj, "constructor") ||
+          Object.prototype.hasOwnProperty.call(obj, "prototype")) {
+        return undefined;
+      }
+    }
+    return obj;
+  } catch {
+    return undefined;
+  }
+}
+
 export const mapBookingToMutationInput = ({
   values,
   event,
@@ -89,7 +108,7 @@ export const mapBookingToMutationInput = ({
     routingFormResponseId,
     skipContactOwner,
     // In case of rerouting, the form responses are actually the responses that we need to update.
-    reroutingFormResponses: reroutingFormResponses ? JSON.parse(reroutingFormResponses) : undefined,
+    reroutingFormResponses: reroutingFormResponses ? safeParseJson(reroutingFormResponses) : undefined,
     _isDryRun,
     _shouldServeCache,
     dub_id,
