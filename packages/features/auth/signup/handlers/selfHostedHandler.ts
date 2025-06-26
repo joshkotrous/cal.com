@@ -31,11 +31,33 @@ export default async function handler(body: Record<string, string>) {
     return NextResponse.json({ message: "Invalid username" }, { status: 422 });
   }
 
-  let foundToken: { id: number; teamId: number | null; expires: Date } | null = null;
+  let foundToken: { id: number; teamId: number | null; expires: Date; email?: string } | null = null;
   let correctedUsername = username;
   if (token) {
-    foundToken = await findTokenByToken({ token });
+    // Fetch the token and also select the email field
+    foundToken = await prisma.verificationToken.findUnique({
+      where: { token },
+      select: {
+        id: true,
+        expires: true,
+        teamId: true,
+        email: true,
+      },
+    });
+    if (!foundToken) {
+      return NextResponse.json({ message: "Invalid Token" }, { status: 401 });
+    }
     throwIfTokenExpired(foundToken?.expires);
+    // Ensure the email in the token matches the registering email
+    if (
+      foundToken.email &&
+      foundToken.email.toLowerCase() !== userEmail
+    ) {
+      return NextResponse.json(
+        { message: "Invitation token email does not match the registration email address." },
+        { status: 403 }
+      );
+    }
     correctedUsername = await validateAndGetCorrectedUsernameForTeam({
       username,
       email: userEmail,
