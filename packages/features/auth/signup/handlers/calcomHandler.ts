@@ -67,10 +67,27 @@ const handler: CustomNextApiHandler = async (body, usernameStatus) => {
 
   const email = _email.toLowerCase();
 
-  let foundToken: { id: number; teamId: number | null; expires: Date } | null = null;
+  let foundToken: { id: number; teamId: number | null; expires: Date; email?: string | null } | null = null;
   if (token) {
-    foundToken = await findTokenByToken({ token });
+    // Fetch the token and also select the email if present
+    foundToken = await prisma.verificationToken.findUnique({
+      where: { token },
+      select: { id: true, expires: true, teamId: true, email: true },
+    });
+    if (!foundToken) {
+      throw new HttpError({
+        statusCode: 401,
+        message: "Invalid Token",
+      });
+    }
     throwIfTokenExpired(foundToken?.expires);
+    // Ensure the email matches the one associated with the invite token
+    if (foundToken.email && foundToken.email.toLowerCase() !== email) {
+      throw new HttpError({
+        statusCode: 400,
+        message: "The email used does not match the invited email for this token.",
+      });
+    }
     username = await validateAndGetCorrectedUsernameForTeam({
       username,
       email,
