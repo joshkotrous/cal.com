@@ -88,7 +88,9 @@ export default async function handler(body: Record<string, string>) {
         }
       }
 
-      const user = await prisma.user.upsert({
+      // Only update emailVerified if the user is not already verified
+      const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
+      await prisma.user.upsert({
         where: { email: userEmail },
         update: {
           username: correctedUsername,
@@ -98,7 +100,8 @@ export default async function handler(body: Record<string, string>) {
               update: { hash: hashedPassword },
             },
           },
-          emailVerified: new Date(Date.now()),
+          // Only set emailVerified if not already set
+          ...(existingUser && !existingUser.emailVerified ? { emailVerified: null } : {}),
           identityProvider: IdentityProvider.CAL,
         },
         create: {
@@ -110,14 +113,14 @@ export default async function handler(body: Record<string, string>) {
       });
 
       const { membership } = await createOrUpdateMemberships({
-        user,
+        user: existingUser,
         team,
       });
 
       // Accept any child team invites for orgs.
       if (team.parent) {
         await joinAnyChildTeamOnOrgInvite({
-          userId: user.id,
+          userId: existingUser?.id,
           org: team.parent,
         });
       }
@@ -143,6 +146,8 @@ export default async function handler(body: Record<string, string>) {
         );
       }
     }
+    // Only update emailVerified if the user is not already verified
+    const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
     await prisma.user.upsert({
       where: { email: userEmail },
       update: {
@@ -153,7 +158,8 @@ export default async function handler(body: Record<string, string>) {
             update: { hash: hashedPassword },
           },
         },
-        emailVerified: new Date(Date.now()),
+        // Only set emailVerified if not already set
+        ...(existingUser && !existingUser.emailVerified ? { emailVerified: null } : {}),
         identityProvider: IdentityProvider.CAL,
       },
       create: {
