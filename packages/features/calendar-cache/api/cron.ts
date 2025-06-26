@@ -25,7 +25,8 @@ function logRejected(result: PromiseSettledResult<unknown>) {
   }
 }
 
-function getUniqueCalendarsByExternalId<
+// Fix: Group by both externalId and credentialId to prevent cross-tenant mixing
+function getUniqueCalendarsByExternalIdAndCredentialId<
   T extends {
     externalId: string;
     eventTypeId: number | null;
@@ -33,26 +34,34 @@ function getUniqueCalendarsByExternalId<
     id: string;
   }
 >(calendars: T[]) {
-  type ExternalId = string;
+  type Key = string;
   return calendars.reduce(
     (acc, sc) => {
-      if (!acc[sc.externalId]) {
-        acc[sc.externalId] = {
+      if (!sc.credentialId) {
+        // Skip grouping if credentialId is missing; will be handled later
+        return acc;
+      }
+      const key = `${sc.externalId}::${sc.credentialId}`;
+      if (!acc[key]) {
+        acc[key] = {
           eventTypeIds: [sc.eventTypeId],
           credentialId: sc.credentialId,
-          id: sc.id,
+          externalId: sc.externalId,
+          ids: [sc.id],
         };
       } else {
-        acc[sc.externalId].eventTypeIds.push(sc.eventTypeId);
+        acc[key].eventTypeIds.push(sc.eventTypeId);
+        acc[key].ids.push(sc.id);
       }
       return acc;
     },
     {} as Record<
-      ExternalId,
+      Key,
       {
         eventTypeIds: SelectedCalendarEventTypeIds;
-        credentialId: number | null;
-        id: string;
+        credentialId: number;
+        externalId: string;
+        ids: string[];
       }
     >
   );
@@ -60,26 +69,28 @@ function getUniqueCalendarsByExternalId<
 
 const handleCalendarsToUnwatch = async () => {
   const calendarsToUnwatch = await SelectedCalendarRepository.getNextBatchToUnwatch(500);
-  const calendarsWithEventTypeIdsGroupedTogether = getUniqueCalendarsByExternalId(calendarsToUnwatch);
+  const calendarsWithEventTypeIdsGroupedTogether = getUniqueCalendarsByExternalIdAndCredentialId(calendarsToUnwatch);
   const result = await Promise.allSettled(
-    Object.entries(calendarsWithEventTypeIdsGroupedTogether).map(
-      async ([externalId, { eventTypeIds, credentialId, id }]) => {
+    Object.values(calendarsWithEventTypeIdsGroupedTogether).map(
+      async ({ eventTypeIds, credentialId, externalId, ids }) => {
         if (!credentialId) {
           // So we don't retry on next cron run
-
-          // FIXME: There could actually be multiple calendars with the same externalId and thus we need to technically update error for all of them
-          await SelectedCalendarRepository.setErrorInUnwatching({
-            id,
-            error: "Missing credentialId",
-          });
-          log.error("no credentialId for SelectedCalendar: ", id);
+          await Promise.all(
+            ids.map(id =>
+              SelectedCalendarRepository.setErrorInUnwatching({
+                id,
+                error: "Missing credentialId",
+              })
+            )
+          );
+          log.error("no credentialId for SelectedCalendar(s): ", ids.join(", "));
           return;
         }
 
         try {
           const cc = await CalendarCache.initFromCredentialId(credentialId);
           await cc.unwatchCalendar({ calendarId: externalId, eventTypeIds });
-          await SelectedCalendarRepository.removeUnwatchingError({ id });
+          await Promise.all(ids.map(id => SelectedCalendarRepository.removeUnwatchingError({ id })));
         } catch (error) {
           let errorMessage = "Unknown error";
           if (error instanceof Error) {
@@ -88,14 +99,18 @@ const handleCalendarsToUnwatch = async () => {
           log.error(
             `Error unwatching calendar ${externalId}`,
             safeStringify({
-              selectedCalendarId: id,
+              selectedCalendarIds: ids,
               error: errorMessage,
             })
           );
-          await SelectedCalendarRepository.setErrorInUnwatching({
-            id,
-            error: `${errorMessage}`,
-          });
+          await Promise.all(
+            ids.map(id =>
+              SelectedCalendarRepository.setErrorInUnwatching({
+                id,
+                error: `${errorMessage}`,
+              })
+            )
+          );
         }
       }
     )
@@ -109,21 +124,25 @@ const handleCalendarsToUnwatch = async () => {
 
 const handleCalendarsToWatch = async () => {
   const calendarsToWatch = await SelectedCalendarRepository.getNextBatchToWatch(500);
-  const calendarsWithEventTypeIdsGroupedTogether = getUniqueCalendarsByExternalId(calendarsToWatch);
+  const calendarsWithEventTypeIdsGroupedTogether = getUniqueCalendarsByExternalIdAndCredentialId(calendarsToWatch);
   const result = await Promise.allSettled(
-    Object.entries(calendarsWithEventTypeIdsGroupedTogether).map(
-      async ([externalId, { credentialId, eventTypeIds, id }]) => {
+    Object.values(calendarsWithEventTypeIdsGroupedTogether).map(
+      async ({ credentialId, eventTypeIds, externalId, ids }) => {
         if (!credentialId) {
           // So we don't retry on next cron run
-          await SelectedCalendarRepository.setErrorInWatching({ id, error: "Missing credentialId" });
-          log.error("no credentialId for SelectedCalendar: ", id);
+          await Promise.all(
+            ids.map(id =>
+              SelectedCalendarRepository.setErrorInWatching({ id, error: "Missing credentialId" })
+            )
+          );
+          log.error("no credentialId for SelectedCalendar(s): ", ids.join(", "));
           return;
         }
 
         try {
           const cc = await CalendarCache.initFromCredentialId(credentialId);
           await cc.watchCalendar({ calendarId: externalId, eventTypeIds });
-          await SelectedCalendarRepository.removeWatchingError({ id });
+          await Promise.all(ids.map(id => SelectedCalendarRepository.removeWatchingError({ id })));
         } catch (error) {
           let errorMessage = "Unknown error";
           if (error instanceof Error) {
@@ -132,14 +151,18 @@ const handleCalendarsToWatch = async () => {
           log.error(
             `Error watching calendar ${externalId}`,
             safeStringify({
-              selectedCalendarId: id,
+              selectedCalendarIds: ids,
               error: errorMessage,
             })
           );
-          await SelectedCalendarRepository.setErrorInWatching({
-            id,
-            error: `${errorMessage}`,
-          });
+          await Promise.all(
+            ids.map(id =>
+              SelectedCalendarRepository.setErrorInWatching({
+                id,
+                error: `${errorMessage}`,
+              })
+            )
+          );
         }
       }
     )
