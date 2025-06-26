@@ -37,6 +37,20 @@ function isLteCondition(value: any): value is { lte: any } {
   return typeof value === "object" && value !== null && "lte" in value;
 }
 
+// Escapes single quotes in a string for SQL
+function escapeSqlString(value: string): string {
+  return value.replace(/'/g, "''");
+}
+
+// Escapes identifiers (e.g., column names) for SQL
+function escapeSqlIdentifier(identifier: string): string {
+  // Only allow alphanumeric and underscore for identifiers
+  if (!/^\w+$/.test(identifier)) {
+    throw new Error(`Invalid SQL identifier: ${identifier}`);
+  }
+  return `"${identifier}"`;
+}
+
 function buildSqlCondition(condition: any): string {
   if (Array.isArray(condition.OR)) {
     return `(${condition.OR.map(buildSqlCondition).join(" OR ")})`;
@@ -45,16 +59,23 @@ function buildSqlCondition(condition: any): string {
   } else {
     const clauses: string[] = [];
     for (const [key, value] of Object.entries(condition)) {
+      const safeKey = escapeSqlIdentifier(key);
       if (isInCondition(value)) {
-        const valuesList = value.in.map((v) => `'${v}'`).join(", ");
-        clauses.push(`"${key}" IN (${valuesList})`);
+        const valuesList = value.in
+          .map((v) => typeof v === "string" ? `'${escapeSqlString(v)}'` : Number(v))
+          .join(", ");
+        clauses.push(`${safeKey} IN (${valuesList})`);
       } else if (isGteCondition(value)) {
-        clauses.push(`"${key}" >= '${value.gte}'`);
+        const v = value.gte;
+        const safeValue = typeof v === "string" ? `'${escapeSqlString(v)}'` : Number(v);
+        clauses.push(`${safeKey} >= ${safeValue}`);
       } else if (isLteCondition(value)) {
-        clauses.push(`"${key}" <= '${value.lte}'`);
+        const v = value.lte;
+        const safeValue = typeof v === "string" ? `'${escapeSqlString(v)}'` : Number(v);
+        clauses.push(`${safeKey} <= ${safeValue}`);
       } else {
-        const formattedValue = typeof value === "string" ? `'${value}'` : value;
-        clauses.push(`"${key}" = ${formattedValue}`);
+        const safeValue = typeof value === "string" ? `'${escapeSqlString(value)}'` : Number(value);
+        clauses.push(`${safeKey} = ${safeValue}`);
       }
     }
     return clauses.join(" AND ");
