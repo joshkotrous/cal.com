@@ -70,10 +70,20 @@ export function getOrgDomainConfig({
   isPlatform?: boolean;
 }) {
   if (isPlatform && forcedSlug) {
-    return {
-      isValidOrgDomain: true,
-      currentOrgDomain: forcedSlug,
-    };
+    // SECURITY PATCH: Do not trust forcedSlug from headers unless in E2E test mode
+    if (process.env.NEXT_PUBLIC_IS_E2E) {
+      return {
+        isValidOrgDomain: true,
+        currentOrgDomain: forcedSlug,
+      };
+    } else {
+      // Ignore forcedSlug in non-test mode
+      return getOrgDomainConfigFromHostname({
+        hostname,
+        fallback,
+        forcedSlug: undefined,
+      });
+    }
   }
 
   return getOrgDomainConfigFromHostname({
@@ -91,11 +101,22 @@ export function orgDomainConfig(req: IncomingMessage | undefined, fallback?: str
   const forcedSlugHeader = req?.headers?.["x-cal-force-slug"];
   const forcedSlug = forcedSlugHeader instanceof Array ? forcedSlugHeader[0] : forcedSlugHeader;
 
+  // SECURITY PATCH: Do not trust forcedSlug from headers unless in E2E test mode
   if (forPlatform && forcedSlug) {
-    return {
-      isValidOrgDomain: true,
-      currentOrgDomain: forcedSlug,
-    };
+    if (process.env.NEXT_PUBLIC_IS_E2E) {
+      return {
+        isValidOrgDomain: true,
+        currentOrgDomain: forcedSlug,
+      };
+    } else {
+      // Ignore forcedSlug in non-test mode
+      const hostname = req?.headers?.host || "";
+      return getOrgDomainConfigFromHostname({
+        hostname,
+        fallback,
+        forcedSlug: undefined,
+      });
+    }
   }
 
   const hostname = req?.headers?.host || "";
