@@ -94,6 +94,7 @@ export default async function handleChildrenEventTypes({
   prisma,
   profileId,
   updatedValues,
+  currentUserId,
 }: handleChildrenEventTypesProps) {
   // Check we are dealing with a managed event type
   if (updatedEventType?.schedulingType !== SchedulingType.MANAGED)
@@ -141,6 +142,14 @@ export default async function handleChildrenEventTypes({
   const oldUserIds = currentUserIds?.filter((id) => previousUserIds?.includes(id));
   // Calculate if there are new workflows for which assigned members will get too
   const currentWorkflowIds = eventType.workflows?.map((wf) => wf.workflowId);
+
+  // Authorization check: Ensure all userIds in children are either the current user or users the current user is authorized to manage
+  // For now, restrict to only allow currentUserId as owner for all children
+  if (children && children.some((ch) => ch.owner.id !== currentUserId)) {
+    return {
+      message: "Unauthorized: You can only manage your own event types.",
+    };
+  }
 
   // Store result for existent event types deletion process
   let deletedExistentEventTypes = undefined;
