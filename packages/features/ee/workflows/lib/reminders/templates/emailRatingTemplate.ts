@@ -5,6 +5,12 @@ import { APP_NAME } from "@calcom/lib/constants";
 import { TimeFormat } from "@calcom/lib/timeFormat";
 import { WorkflowActions } from "@calcom/prisma/enums";
 
+// Utility to sanitize email header values to prevent CRLF injection
+function sanitizeHeaderValue(value: string): string {
+  // Remove CR, LF, and other control characters
+  return value.replace(/[\r\n\x00-\x1F\x7F]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
 const emailRatingTemplate = ({
   isEditingMode,
   locale,
@@ -56,7 +62,9 @@ const emailRatingTemplate = ({
     endTime = dayjs(endTime).tz(timeZone).locale(locale).format(currentTimeFormat);
   }
 
-  const emailSubject = `${t("experience_review_prompt")} ${eventName}`;
+  // Sanitize eventName before using in the subject
+  const safeEventName = eventName ? sanitizeHeaderValue(eventName) : "";
+  const emailSubject = `${sanitizeHeaderValue(t("experience_review_prompt"))} ${safeEventName}`;
 
   const introHtml = `<p>${t("hi")}${name ? ` ${name}` : ""},<br><br>${t(
     "improve_customer_experience_message"
