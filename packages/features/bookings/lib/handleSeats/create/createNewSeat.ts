@@ -157,7 +157,9 @@ const createNewSeat = async (
   if (!Number.isNaN(paymentAppData.price) && paymentAppData.price > 0 && !!seatedBooking) {
     const credentialPaymentAppCategories = await prisma.credential.findMany({
       where: {
-        ...(paymentAppData.credentialId ? { id: paymentAppData.credentialId } : { userId: organizerUser.id }),
+        ...(paymentAppData.credentialId
+          ? { id: paymentAppData.credentialId, userId: organizerUser.id }
+          : { userId: organizerUser.id }),
         app: {
           categories: {
             hasSome: ["payment"],
