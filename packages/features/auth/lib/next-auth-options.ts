@@ -140,10 +140,8 @@ const providers: Provider[] = [
         throw new Error(ErrorCode.IncorrectEmailPassword);
       }
 
-      if (user.password?.hash && !credentials.totpCode) {
-        if (!user.password?.hash) {
-          throw new Error(ErrorCode.IncorrectEmailPassword);
-        }
+      // Always verify password if user has a password hash and is using credentials provider, regardless of TOTP
+      if (user.password?.hash) {
         const isCorrectPassword = await verifyPassword(credentials.password, user.password.hash);
         if (!isCorrectPassword) {
           throw new Error(ErrorCode.IncorrectEmailPassword);
@@ -1088,3 +1086,4 @@ const determineProfile = ({
   // If there is just one profile it has to be the one we want to log into.
   return profiles[0];
 };
+
