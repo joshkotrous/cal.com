@@ -67,6 +67,22 @@ export type HandleCancelBookingResponse = {
   bookingUid: string;
 };
 
+// --- Access Control Helper ---
+async function assertCanAccessBooking(bookingToDelete: BookingToDelete, userId?: number) {
+  if (!userId) throw new HttpError({ statusCode: 401, message: "Unauthorized" });
+
+  // Allow if user is the owner of the booking
+  if (bookingToDelete.userId === userId) return;
+
+  // Allow if user is a host of the event type
+  if (bookingToDelete.eventType?.hosts?.some((host) => host.user.id === userId)) return;
+
+  // Allow if user is the owner of the event type
+  if (bookingToDelete.eventType?.owner?.id === userId) return;
+
+  throw new HttpError({ statusCode: 403, message: "You are not allowed to cancel this booking" });
+}
+
 async function handler(input: CancelBookingInput) {
   const body = input.bookingData;
   const {
@@ -106,6 +122,9 @@ async function handler(input: CancelBookingInput) {
       message: "Cancellation reason is required when you are the host",
     });
   }
+
+  // --- Access Control Check ---
+  await assertCanAccessBooking(bookingToDelete, userId);
 
   // If the booking is a seated event and there is no seatReferenceUid we should validate that logged in user is host
   if (bookingToDelete.eventType?.seatsPerTimeSlot && !seatReferenceUid) {
