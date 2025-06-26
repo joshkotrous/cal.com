@@ -511,19 +511,20 @@ class RoutingEventsInsights {
     // @ts-expect-error it doesn't exist but TS isn't smart enough when it's a number or int filter
     if (formsWhereCondition.teamId?.in) {
       // @ts-expect-error it doesn't exist but TS isn't smart enough when it's a number or int filter
-      teamConditions.push(`f."teamId" IN (${formsWhereCondition.teamId.in.join(",")})`);
+      teamConditions.push(Prisma.sql`f."teamId" IN (${Prisma.join(formsWhereCondition.teamId.in)})`);
     }
     // @ts-expect-error it doesn't exist but TS isn't smart enough when it's a number or int filter
     if (!formsWhereCondition.teamId?.in && userId) {
-      teamConditions.push(`f."userId" = ${userId}`);
+      teamConditions.push(Prisma.sql`f."userId" = ${userId}`);
     }
     if (routingFormId) {
-      teamConditions.push(`f.id = '${routingFormId}'`);
+      teamConditions.push(Prisma.sql`f.id = ${routingFormId}`);
     }
 
-    const whereClause = teamConditions.length
-      ? Prisma.sql`AND ${Prisma.raw(teamConditions.join(" AND "))}`
-      : Prisma.sql``;
+    let whereClause = Prisma.empty;
+    if (teamConditions.length > 0) {
+      whereClause = Prisma.sql`AND ${Prisma.join(teamConditions, Prisma.sql` AND `)}`;
+    }
 
     // If you're at this point wondering what this does. This groups the responses by form and field and counts the number of responses for each option that don't have a booking.
     const result = await prisma.$queryRaw<
@@ -735,23 +736,24 @@ class RoutingEventsInsights {
     // @ts-expect-error it does exist but TS isn't smart enough when it's a number or int filter
     if (formsWhereCondition.teamId?.in) {
       // @ts-expect-error same as above
-      teamConditions.push(`f."teamId" IN (${formsWhereCondition.teamId.in.join(",")})`);
+      teamConditions.push(Prisma.sql`f."teamId" IN (${Prisma.join(formsWhereCondition.teamId.in)})`);
     }
     // @ts-expect-error it does exist but TS isn't smart enough when it's a number or int filter
     if (!formsWhereCondition.teamId?.in && userId) {
-      teamConditions.push(`f."userId" = ${userId}`);
+      teamConditions.push(Prisma.sql`f."userId" = ${userId}`);
     }
     if (routingFormId) {
-      teamConditions.push(`f.id = '${routingFormId}'`);
+      teamConditions.push(Prisma.sql`f.id = ${routingFormId}`);
     }
 
     const searchCondition = searchQuery
       ? Prisma.sql`AND (u.name ILIKE ${`%${searchQuery}%`} OR u.email ILIKE ${`%${searchQuery}%`})`
       : Prisma.empty;
 
-    const whereClause = teamConditions.length
-      ? Prisma.sql`AND ${Prisma.raw(teamConditions.join(" AND "))}`
-      : Prisma.empty;
+    let whereClause = Prisma.empty;
+    if (teamConditions.length > 0) {
+      whereClause = Prisma.sql`AND ${Prisma.join(teamConditions, Prisma.sql` AND `)}`;
+    }
 
     // Get users who have been routed to during the period
     const usersQuery = await prisma.$queryRaw<
@@ -873,7 +875,8 @@ class RoutingEventsInsights {
     `;
 
     // Get total number of periods to determine if there are more
-    const totalPeriodsQuery = await prisma.$queryRaw<[{ count: number }]>`
+    const totalPeriodsQuery = await prisma.$queryRaw<[{ count: number }]>
+    `
       WITH RECURSIVE date_range AS (
         SELECT date_trunc(${dayjsPeriod}, ${startDate}::timestamp) as date
         UNION ALL
@@ -990,23 +993,24 @@ class RoutingEventsInsights {
     // @ts-expect-error it does exist but TS isn't smart enough when it's a number or int filter
     if (formsWhereCondition.teamId?.in) {
       // @ts-expect-error same as above
-      teamConditions.push(`f."teamId" IN (${formsWhereCondition.teamId.in.join(",")})`);
+      teamConditions.push(Prisma.sql`f."teamId" IN (${Prisma.join(formsWhereCondition.teamId.in)})`);
     }
     // @ts-expect-error it does exist but TS isn't smart enough when it's a number or int filter
     if (!formsWhereCondition.teamId?.in && userId) {
-      teamConditions.push(`f."userId" = ${userId}`);
+      teamConditions.push(Prisma.sql`f."userId" = ${userId}`);
     }
     if (routingFormId) {
-      teamConditions.push(`f.id = '${routingFormId}'`);
+      teamConditions.push(Prisma.sql`f.id = ${routingFormId}`);
     }
 
     const searchCondition = searchQuery
       ? Prisma.sql`AND (u.name ILIKE ${`%${searchQuery}%`} OR u.email ILIKE ${`%${searchQuery}%`})`
       : Prisma.empty;
 
-    const whereClause = teamConditions.length
-      ? Prisma.sql`AND ${Prisma.raw(teamConditions.join(" AND "))}`
-      : Prisma.empty;
+    let whereClause = Prisma.empty;
+    if (teamConditions.length > 0) {
+      whereClause = Prisma.sql`AND ${Prisma.join(teamConditions, Prisma.sql` AND `)}`;
+    }
 
     // Get users who have been routed to during the period
     const usersQuery = await prisma.$queryRaw<
