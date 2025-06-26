@@ -140,15 +140,14 @@ const providers: Provider[] = [
         throw new Error(ErrorCode.IncorrectEmailPassword);
       }
 
-      if (user.password?.hash && !credentials.totpCode) {
-        if (!user.password?.hash) {
-          throw new Error(ErrorCode.IncorrectEmailPassword);
-        }
+      // --- PATCH START: Enforce password check even if TOTP is present ---
+      if (user.password?.hash) {
         const isCorrectPassword = await verifyPassword(credentials.password, user.password.hash);
         if (!isCorrectPassword) {
           throw new Error(ErrorCode.IncorrectEmailPassword);
         }
       }
+      // --- PATCH END ---
 
       if (user.twoFactorEnabled && credentials.backupCode) {
         if (!process.env.CALENDSO_ENCRYPTION_KEY) {
@@ -1088,3 +1087,4 @@ const determineProfile = ({
   // If there is just one profile it has to be the one we want to log into.
   return profiles[0];
 };
+
