@@ -37,24 +37,37 @@ function isLteCondition(value: any): value is { lte: any } {
   return typeof value === "object" && value !== null && "lte" in value;
 }
 
-function buildSqlCondition(condition: any): string {
+// Helper function to escape SQL identifiers (column names)
+function escapeIdentifier(identifier: string): string {
+  // Double quotes inside identifiers are escaped by doubling them
+  return '"' + identifier.replace(/"/g, '""') + '"';
+}
+
+// Helper function to safely parameterize values for Prisma.$queryRaw
+function buildSqlConditionParameterized(condition: any, values: any[]): string {
   if (Array.isArray(condition.OR)) {
-    return `(${condition.OR.map(buildSqlCondition).join(" OR ")})`;
+    return `(${condition.OR.map((c: any) => buildSqlConditionParameterized(c, values)).join(" OR ")})`;
   } else if (Array.isArray(condition.AND)) {
-    return `(${condition.AND.map(buildSqlCondition).join(" AND ")})`;
+    return `(${condition.AND.map((c: any) => buildSqlConditionParameterized(c, values)).join(" AND ")})`;
   } else {
     const clauses: string[] = [];
     for (const [key, value] of Object.entries(condition)) {
+      const escapedKey = escapeIdentifier(key);
       if (isInCondition(value)) {
-        const valuesList = value.in.map((v) => `'${v}'`).join(", ");
-        clauses.push(`"${key}" IN (${valuesList})`);
+        const placeholders = value.in.map((v: any) => {
+          values.push(v);
+          return `?`;
+        }).join(", ");
+        clauses.push(`${escapedKey} IN (${placeholders})`);
       } else if (isGteCondition(value)) {
-        clauses.push(`"${key}" >= '${value.gte}'`);
+        values.push(value.gte);
+        clauses.push(`${escapedKey} >= ?`);
       } else if (isLteCondition(value)) {
-        clauses.push(`"${key}" <= '${value.lte}'`);
+        values.push(value.lte);
+        clauses.push(`${escapedKey} <= ?`);
       } else {
-        const formattedValue = typeof value === "string" ? `'${value}'` : value;
-        clauses.push(`"${key}" = ${formattedValue}`);
+        values.push(value);
+        clauses.push(`${escapedKey} = ?`);
       }
     }
     return clauses.join(" AND ");
@@ -85,7 +98,8 @@ class EventsInsights {
   ): Promise<AggregateResult> => {
     const formattedStartDate = dayjs(startDate).format("YYYY-MM-DD HH:mm:ss");
     const formattedEndDate = dayjs(endDate).format("YYYY-MM-DD HH:mm:ss");
-    const whereClause = buildSqlCondition(whereConditional);
+    const values: any[] = [];
+    const whereClause = buildSqlConditionParameterized(whereConditional, values);
 
     const data = await prisma.$queryRaw<
       {
@@ -95,7 +109,8 @@ class EventsInsights {
         noShowHost: boolean;
         noShowGuests: number;
       }[]
-    >`
+    >(
+      `
     SELECT
       "date",
       CAST(COUNT(*) AS INTEGER) AS "bookingsCount",
@@ -104,7 +119,7 @@ class EventsInsights {
       "noShowHost"
     FROM (
       SELECT
-        DATE("createdAt" AT TIME ZONE ${timeZone}) as "date",
+        DATE("createdAt" AT TIME ZONE $1) as "date",
         "a"."noShow" AS "isNoShowGuest",
         "timeStatus",
         "noShowHost"
@@ -113,8 +128,8 @@ class EventsInsights {
       JOIN
         "Attendee" "a" ON "a"."bookingId" = "BookingTimeStatusDenormalized"."id"
       WHERE
-        "createdAt" BETWEEN ${formattedStartDate}::timestamp AND ${formattedEndDate}::timestamp
-        AND ${Prisma.raw(whereClause)}
+        "createdAt" BETWEEN $2::timestamp AND $3::timestamp
+        ${whereClause ? `AND ${whereClause}` : ""}
     ) AS bookings
     GROUP BY
       "date",
@@ -122,7 +137,9 @@ class EventsInsights {
       "noShowHost"
     ORDER BY
       "date";
-  `;
+  `,
+      [timeZone, formattedStartDate, formattedEndDate, ...values]
+    );
 
     const aggregate: AggregateResult = {};
 
