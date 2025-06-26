@@ -517,13 +517,23 @@ class RoutingEventsInsights {
     if (!formsWhereCondition.teamId?.in && userId) {
       teamConditions.push(`f."userId" = ${userId}`);
     }
+    // PATCH START: Securely inject routingFormId as a parameter
     if (routingFormId) {
-      teamConditions.push(`f.id = '${routingFormId}'`);
+      teamConditions.push(Prisma.sql`f.id = ${routingFormId}`);
     }
+    // PATCH END
 
-    const whereClause = teamConditions.length
-      ? Prisma.sql`AND ${Prisma.raw(teamConditions.join(" AND "))}`
-      : Prisma.sql``;
+    // Build the whereClause using parameterized conditions
+    let whereClause;
+    if (teamConditions.length > 0) {
+      // Join string and Prisma.sql conditions
+      const sqlParts = teamConditions.map((cond) =>
+        typeof cond === "string" ? Prisma.raw(cond) : cond
+      );
+      whereClause = Prisma.sql`AND ${Prisma.join(sqlParts, Prisma.sql` AND `)}`;
+    } else {
+      whereClause = Prisma.sql``;
+    }
 
     // If you're at this point wondering what this does. This groups the responses by form and field and counts the number of responses for each option that don't have a booking.
     const result = await prisma.$queryRaw<
@@ -873,7 +883,8 @@ class RoutingEventsInsights {
     `;
 
     // Get total number of periods to determine if there are more
-    const totalPeriodsQuery = await prisma.$queryRaw<[{ count: number }]>`
+    const totalPeriodsQuery = await prisma.$queryRaw<[{ count: number }]>
+    `
       WITH RECURSIVE date_range AS (
         SELECT date_trunc(${dayjsPeriod}, ${startDate}::timestamp) as date
         UNION ALL
