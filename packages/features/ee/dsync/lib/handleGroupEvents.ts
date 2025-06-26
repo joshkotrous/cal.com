@@ -115,10 +115,11 @@ const handleGroupEvents = async (event: DirectorySyncEvent, organizationId: numb
   // For each team linked to the dsync group name provision members
   for (const group of groupNames) {
     if (newUserEmails.length) {
+      // Set identityProvider to SAML for directory-synced users
       const createUsersAndConnectToOrgProps = {
         emailsToCreate: newUserEmails,
-        identityProvider: IdentityProvider.CAL,
-        identityProviderId: null,
+        identityProvider: IdentityProvider.SAML,
+        identityProviderId: null, // Optionally, set to event.directory_id or other unique identifier
       };
       newUsers = await createUsersAndConnectToOrg({
         createUsersAndConnectToOrgProps,
