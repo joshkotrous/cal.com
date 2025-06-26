@@ -67,17 +67,16 @@ const handleDeleteCredential = async ({
     throw new Error("Credential not found");
   }
 
+  // Secure eventTypes query: Only fetch event types owned by the user/team, or managed events whose parent is owned by the user/team
   const eventTypes = await prisma.eventType.findMany({
     where: {
       OR: [
         {
           ...(teamId ? { teamId } : { userId }),
         },
-        // for managed events
+        // for managed events, parent must be owned by the same user/team
         {
-          parent: {
-            teamId,
-          },
+          parent: teamId ? { teamId } : { userId },
         },
       ],
     },
