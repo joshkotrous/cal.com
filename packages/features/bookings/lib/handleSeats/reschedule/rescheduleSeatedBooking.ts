@@ -124,6 +124,11 @@ const rescheduleSeatedBooking = async (
       eventManager,
       loggerWithEventDetails
     );
+  } else {
+    // Validate that the bookingSeat belongs to the authenticated user
+    if (!bookingSeat.attendee || bookingSeat.attendee.userId !== reqUserId) {
+      throw new HttpError({ statusCode: 401, message: "Unauthorized seat reschedule attempt." });
+    }
   }
 
   // seatAttendee is null when the organizer is rescheduling.
