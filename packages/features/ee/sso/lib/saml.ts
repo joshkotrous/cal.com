@@ -11,7 +11,14 @@ export const samlProductID = "Cal.com";
 export const samlAudience = "https://saml.cal.com";
 export const samlPath = "/api/auth/saml/callback";
 export const oidcPath = "/api/auth/oidc";
-export const clientSecretVerifier = process.env.SAML_CLIENT_SECRET_VERIFIER || "dummy";
+
+// Enforce presence of SAML_CLIENT_SECRET_VERIFIER at startup, do not allow fallback to insecure default
+if (!process.env.SAML_CLIENT_SECRET_VERIFIER) {
+  throw new Error(
+    "SAML_CLIENT_SECRET_VERIFIER environment variable must be set and cannot fall back to a default value. Application startup aborted."
+  );
+}
+export const clientSecretVerifier = process.env.SAML_CLIENT_SECRET_VERIFIER;
 
 export const hostedCal = Boolean(HOSTED_CAL_FEATURES);
 export const tenantPrefix = "team-";
