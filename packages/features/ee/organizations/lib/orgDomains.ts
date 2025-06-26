@@ -69,7 +69,8 @@ export function getOrgDomainConfig({
   forcedSlug?: string;
   isPlatform?: boolean;
 }) {
-  if (isPlatform && forcedSlug) {
+  // Only allow forcedSlug in E2E test mode
+  if (isPlatform && forcedSlug && process.env.NEXT_PUBLIC_IS_E2E) {
     return {
       isValidOrgDomain: true,
       currentOrgDomain: forcedSlug,
@@ -91,7 +92,8 @@ export function orgDomainConfig(req: IncomingMessage | undefined, fallback?: str
   const forcedSlugHeader = req?.headers?.["x-cal-force-slug"];
   const forcedSlug = forcedSlugHeader instanceof Array ? forcedSlugHeader[0] : forcedSlugHeader;
 
-  if (forPlatform && forcedSlug) {
+  // Only allow forcedSlug in E2E test mode
+  if (forPlatform && forcedSlug && process.env.NEXT_PUBLIC_IS_E2E) {
     return {
       isValidOrgDomain: true,
       currentOrgDomain: forcedSlug,
