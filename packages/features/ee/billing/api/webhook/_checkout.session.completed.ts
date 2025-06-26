@@ -1,5 +1,6 @@
 import stripe from "@calcom/features/ee/payments/server/stripe";
 import { CreditsRepository } from "@calcom/lib/server/repository/credits";
+import { StripeBillingService } from "@calcom/features/ee/billing/stripe-billling-service";
 
 import type { SWHMap } from "./__handler";
 import { HttpCode } from "./__handler";
@@ -24,6 +25,22 @@ const handler = async (data: SWHMap["checkout.session.completed"]["data"]) => {
   if (!priceId || priceId !== process.env.NEXT_PUBLIC_STRIPE_CREDITS_PRICE_ID || !nrOfCredits) {
     throw new HttpCode(400, "Invalid price ID");
   }
+
+  // --- Begin Patch: Validate amount charged matches credits awarded ---
+  // Fetch the Stripe price object to get the unit amount (in cents)
+  const billingService = new StripeBillingService();
+  const price = await billingService.getPrice(priceId);
+  if (!price || typeof price.unit_amount !== "number" || price.unit_amount <= 0) {
+    throw new HttpCode(400, "Invalid Stripe price configuration");
+  }
+  // Calculate the expected total amount (in cents)
+  const expectedAmountTotal = price.unit_amount * nrOfCredits;
+  // Allow a small margin for floating point/rounding issues (e.g., 1 cent)
+  const allowedDelta = 1; // cent
+  if (session.amount_total < expectedAmountTotal - allowedDelta) {
+    throw new HttpCode(400, "Payment amount does not match credits awarded");
+  }
+  // --- End Patch ---
 
   await saveToCreditBalance({ userId, teamId, nrOfCredits });
 
