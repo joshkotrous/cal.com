@@ -120,6 +120,18 @@ async function handler(input: CancelBookingInput) {
     }
   }
 
+  // --- BEGIN PATCH: Authorization for non-seated events ---
+  // For non-seated events, ensure only the booking owner or event owner/host can cancel
+  if (!bookingToDelete.eventType?.seatsPerTimeSlot) {
+    const isBookingOwner = bookingToDelete.userId === userId;
+    const isEventOwner = bookingToDelete.eventType?.owner?.id === userId;
+    const isEventHost = bookingToDelete.eventType?.hosts?.some((host) => host.user.id === userId);
+    if (!isBookingOwner && !isEventOwner && !isEventHost) {
+      throw new HttpError({ statusCode: 401, message: "User not authorized to cancel this booking" });
+    }
+  }
+  // --- END PATCH ---
+
   // get webhooks
   const eventTrigger: WebhookTriggerEvents = "BOOKING_CANCELLED";
 
