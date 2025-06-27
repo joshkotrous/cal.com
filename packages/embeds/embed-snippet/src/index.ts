@@ -17,6 +17,22 @@ const WEBAPP_URL =
 
 const EMBED_LIB_URL = import.meta.env.EMBED_PUBLIC_EMBED_LIB_URL || `${WEBAPP_URL}/embed/embed.js`;
 
+// Helper function to validate the URL
+function isValidEmbedUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    // Only allow https protocol
+    if (parsedUrl.protocol !== 'https:') return false;
+    // Allow only URLs that start with the WEBAPP_URL or EMBED_LIB_URL base
+    if (url.startsWith(WEBAPP_URL) || url.startsWith(EMBED_LIB_URL)) {
+      return true;
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 type QueuePushArg = {
   [k: number]: Queue[number];
 };
@@ -44,8 +60,13 @@ export default function EmbedSnippet(url = EMBED_LIB_URL) {
           cal.q = cal.q || [];
 
           //@ts-ignore
-          d.head.appendChild(d.createElement("script")).src = A;
-          cal.loaded = true;
+          if (isValidEmbedUrl(A)) {
+            d.head.appendChild(d.createElement("script")).src = A;
+            cal.loaded = true;
+          } else {
+            // If URL is invalid, do not load script and optionally log error
+            // console.error("Invalid embed script URL blocked:", A);
+          }
         }
 
         if (ar[0] === L) {
@@ -80,3 +101,4 @@ export default function EmbedSnippet(url = EMBED_LIB_URL) {
 }
 
 export const EmbedSnippetString = EmbedSnippet.toString();
+
