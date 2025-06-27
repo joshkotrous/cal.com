@@ -4,9 +4,13 @@ import prisma from "@calcom/prisma";
 import type { OAuthTokenPayload } from "@calcom/types/oauth";
 
 export default async function isAuthorized(token: string, requiredScopes: string[] = []) {
+  if (!process.env.CALENDSO_ENCRYPTION_KEY) {
+    throw new Error("Missing CALENDSO_ENCRYPTION_KEY environment variable");
+  }
+
   let decodedToken: OAuthTokenPayload;
   try {
-    decodedToken = jwt.verify(token, process.env.CALENDSO_ENCRYPTION_KEY || "") as OAuthTokenPayload;
+    decodedToken = jwt.verify(token, process.env.CALENDSO_ENCRYPTION_KEY) as OAuthTokenPayload;
   } catch {
     return null;
   }
