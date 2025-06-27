@@ -120,6 +120,8 @@ const handleMarkNoShow = async ({
     }
 
     if (noShowHost) {
+      await assertCanAccessBooking(bookingUid, userId);
+
       await prisma.booking.update({
         where: {
           uid: bookingUid,
