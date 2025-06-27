@@ -98,7 +98,7 @@ export default async function handler(body: Record<string, string>) {
               update: { hash: hashedPassword },
             },
           },
-          emailVerified: new Date(Date.now()),
+          // Do not auto-verify email here
           identityProvider: IdentityProvider.CAL,
         },
         create: {
@@ -153,7 +153,7 @@ export default async function handler(body: Record<string, string>) {
             update: { hash: hashedPassword },
           },
         },
-        emailVerified: new Date(Date.now()),
+        // Do not auto-verify email here
         identityProvider: IdentityProvider.CAL,
       },
       create: {
